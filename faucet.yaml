@@ -1,0 +1,60 @@
+---
+include:
+  - /etc/faucet/acls.yaml   # later inschakelen als je ACL's nodig hebt
+
+vlans:
+  office:
+    vid: 100
+    faucet_mac: "0e:00:00:00:10:01"
+    faucet_vips: [ "10.0.100.254/24" ]
+    routes:
+      - route:
+          ip_dst: "0.0.0.0/0"
+          ip_gw: "10.0.0.1"
+
+  guest:
+    vid: 200
+    faucet_mac: "0e:00:00:00:20:01"
+    faucet_vips: [ "10.0.200.254/24" ]
+    routes:
+      - route:
+          ip_dst: "0.0.0.0/0"
+          ip_gw: "10.0.0.1"
+
+  management:
+    vid: 300
+    faucet_mac: "0e:00:00:00:30:01"
+    faucet_vips: [ "10.0.0.254/24" ]
+    routes:
+      - route:
+          ip_dst: "0.0.0.0/0"
+          ip_gw: "10.0.0.1"
+
+routers:
+  rtr:
+    vlans: [office, guest, management]
+
+dps:
+  s1:
+    dp_id: 0x1
+    hardware: "Open vSwitch"
+    stack: { priority: 1 }   # s1 = stack-root
+    interfaces:
+      1:   { name: "h1", native_vlan: office }
+      22:  { name: "c1", native_vlan: management }
+      23:  { name: "r1", native_vlan: management }
+      24:
+        name: "to s2"
+        stack: { dp: s2, port: 24 }   # <-- ÉCHTE stack-link (geen tagged_vlans hier)
+
+  s2:
+    dp_id: 0x2
+    hardware: "Open vSwitch"
+    stack: { priority: 0 }
+    interfaces:
+      1:   { name: "h2", native_vlan: office }
+      2:   { name: "h3", native_vlan: guest }
+      24:
+        name: "to s1"
+        stack: { dp: s1, port: 24 }   # <-- ÉCHTE stack-link (geen tagged_vlans hier)
+
