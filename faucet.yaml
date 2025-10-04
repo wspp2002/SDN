@@ -40,9 +40,15 @@ dps:
     hardware: "Open vSwitch"
     stack: { priority: 1 }   # s1 = stack-root
     interfaces:
-      1:   { name: "h1", native_vlan: office }
-      22:  { name: "c1", native_vlan: management }
-      23:  { name: "r1", native_vlan: management }
+      1:   { name: "h1", native_vlan: office, acls_in: [office-egress-block-to-guest]}
+      18:  { name: "dhcp1", native_vlan: office }
+      19:  { name: "dhcp2", native_vlan: guest }
+      20:  { name: "dhcp3", native_vlan: management }
+      21:
+        name: "to s3"
+        stack: { dp: s3, port: 24 }   # <-- ÉCHTE stack-link (geen tagged_vlans hier)
+      22:  { name: "c1", native_vlan: management, acls_in: [mgmt-egress-block-to-guest]}
+      23:  { name: "r1", native_vlan: management, acls_in: [mgmt-egress-block-to-guest] }
       24:
         name: "to s2"
         stack: { dp: s2, port: 24 }   # <-- ÉCHTE stack-link (geen tagged_vlans hier)
@@ -52,9 +58,43 @@ dps:
     hardware: "Open vSwitch"
     stack: { priority: 0 }
     interfaces:
-      1:   { name: "h2", native_vlan: office }
-      2:   { name: "h3", native_vlan: guest }
+      1:   { name: "h2", native_vlan: office, acls_in: [office-egress-block-to-guest]}
+      2:   { name: "h3", native_vlan: guest, acls_in: [guest-egress-block]}
       24:
         name: "to s1"
         stack: { dp: s1, port: 24 }   # <-- ÉCHTE stack-link (geen tagged_vlans hier)
 
+  s3:
+    dp_id: 0x3
+    hardware: "Open vSwitch"
+    interfaces:
+      1:   { name: "h4", native_vlan: office, acls_in: [office-egress-block-to-guest]}
+      2:   { name: "c2", native_vlan: management, acls_in: [mgmt-egress-block-to-guest]}
+      22:
+        name: "to s5"
+        stack: { dp: s5, port: 24 }
+      23:
+        name: "to s4"
+        stack: { dp: s4, port: 24 }
+      24:  
+        name: "to s1"
+        stack: { dp: s1, port: 21 }
+
+  s4:
+    dp_id: 0x4
+    hardware: "Open vSwitch"
+    interfaces:
+      1:   { name: "h5", native_vlan: management, acls_in: [mgmt-egress-block-to-guest]}
+      24:
+        name: "to s3"
+        stack: { dp: s3, port: 23 }
+  
+  s5:
+    dp_id: 0x5
+    hardware: "Open vSwitch"
+    interfaces:
+      1:   { name: "h6", native_vlan: guest, acls_in: [guest-egress-block]}
+      24:
+        name: "to s3"
+        stack: { dp: s3, port: 22 }
+    
