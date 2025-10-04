@@ -20,6 +20,7 @@ vlans:
       - route:
           ip_dst: "0.0.0.0/0"
           ip_gw: "10.0.0.1"
+    acls_in: [ rate-limit-guest ]  # rate-limit voor guest-vlan
 
   management:
     vid: 300
