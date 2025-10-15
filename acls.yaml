@@ -8,8 +8,13 @@ acls:
     mgmt-port-security:
     - rule: { dl_src: "00:00:00:00:00:01", actions: { allow: 1 } }
     - rule: { dl_src: "00:00:00:00:00:05", actions: { allow: 1 } }
+    - rule: { dl_src: "02:aa:aa:aa:aa:aa", actions: { allow: 1 } }
+    - rule: { dl_src: "00:00:00:00:00:0d", actions: { allow: 1 } }
+    - rule: { dl_src: "00:00:00:00:00:02", actions: { allow: 1 } }
+    - rule: { dl_src: "00:00:00:00:00:0e", actions: { allow: 1 } }
+    - rule: { dl_src: "0e:00:00:00:30:01", actions: { allow: 1 } }
     - rule: { actions: { allow: 0 } }
-    
+
     guest-egress-block:
     - rule: { dl_type: 0x800, ipv4_src: 10.0.200.0/24, ipv4_dst: 10.0.0.0/24,   actions: { allow: 0 } }    # guest -> mgmt
     - rule: { dl_type: 0x800, ipv4_src: 10.0.200.0/24, ipv4_dst: 10.0.100.0/24, actions: { allow: 0 } }    # guest -> office
