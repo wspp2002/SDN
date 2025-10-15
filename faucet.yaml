@@ -11,10 +11,8 @@ vlans:
       - route:
           ip_dst: "0.0.0.0/0"
           ip_gw: "10.0.0.1"
-      - route:
-          ip_dst: "0.0.0.0/0"
-          ip_gw: "10.0.0.2"
-          
+
+
 
   guest:
     vid: 200
@@ -24,9 +22,7 @@ vlans:
       - route:
           ip_dst: "0.0.0.0/0"
           ip_gw: "10.0.0.1"
-      - route:
-          ip_dst: "0.0.0.0/0"
-          ip_gw: "10.0.0.2"
+
     acls_in: [ rate-limit-guest ]  # rate-limit voor guest-vlan
 
   management:
@@ -37,9 +33,7 @@ vlans:
       - route:
           ip_dst: "0.0.0.0/0"
           ip_gw: "10.0.0.1"
-      - route:
-          ip_dst: "0.0.0.0/0"
-          ip_gw: "10.0.0.2"
+
 
 routers:
   rtr:
@@ -58,8 +52,8 @@ dps:
       21:
         name: "to s3"
         stack: { dp: s3, port: 24 }   # <-- ÉCHTE stack-link (geen tagged_vlans hier)
-      22:  { name: "c1", native_vlan: management, acls_in: [mgmt-egress-block-to-guest]}
-      23:  { name: "nat1", native_vlan: management, acls_in: [mgmt-egress-block-to-guest] }
+      22:  { name: "c1", native_vlan: management, acls_in: [mgmt-port-security, mgmt-egress-block-to-guest]}
+      23:  { name: "nat1", native_vlan: management, acls_in: [mgmt-port-security]}
       24:
         name: "to s2"
         stack: { dp: s2, port: 24 }   # <-- ÉCHTE stack-link (geen tagged_vlans hier)
@@ -71,6 +65,7 @@ dps:
     interfaces:
       1:   { name: "h2", native_vlan: office, acls_in: [office-egress-block-to-guest]}
       2:   { name: "h3", native_vlan: guest, acls_in: [guest-egress-block]}
+      3:   { name: "to-f1", native_vlan: office } # <---- new don't touch. switch voor 500 hosts test.
       24:
         name: "to s1"
         stack: { dp: s1, port: 24 }   # <-- ÉCHTE stack-link (geen tagged_vlans hier)
@@ -80,15 +75,15 @@ dps:
     hardware: "Open vSwitch"
     interfaces:
       1:   { name: "h4", native_vlan: office, acls_in: [office-egress-block-to-guest]}
-      2:   { name: "c2", native_vlan: management, acls_in: [mgmt-egress-block-to-guest]}
-      21:  { name: "nat2", native_vlan: management, acls_in: [mgmt-egress-block-to-guest] }
+      2:   { name: "c2", native_vlan: management, acls_in: [mgmt-egress-block-to-guest, mgmt-port-security]}
+      21:  { name: "nat2", native_vlan: management, acls_in: [mgmt-port-security]}
       22:
         name: "to s5"
         stack: { dp: s5, port: 24 }
       23:
         name: "to s4"
         stack: { dp: s4, port: 24 }
-      24:  
+      24:
         name: "to s1"
         stack: { dp: s1, port: 21 }
 
@@ -96,17 +91,17 @@ dps:
     dp_id: 0x4
     hardware: "Open vSwitch"
     interfaces:
-      1:   { name: "h5", native_vlan: management, acls_in: [mgmt-egress-block-to-guest]}
+      1:   { name: "h5", native_vlan: management, acls_in: [mgmt-egress-block-to-guest, mgmt-port-security]}
       24:
         name: "to s3"
         stack: { dp: s3, port: 23 }
-  
+
   s5:
     dp_id: 0x5
     hardware: "Open vSwitch"
     interfaces:
       1:   { name: "h6", native_vlan: guest, acls_in: [guest-egress-block]}
+      3:   { name: "to-f2", native_vlan: guest } # <--- nieuw dont touch voor 500 users test (opdracht)
       24:
         name: "to s3"
         stack: { dp: s3, port: 22 }
-    
