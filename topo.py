@@ -6,8 +6,12 @@ from mininet.cli import CLI
 from mininet.log import setLogLevel, info
 from mininet.node import Node
 import time
-        
 
+# OVSBridge voor 500 bench test
+from mininet.node import OVSBridge
+
+
+# NAT 2 kan inprincipe weg, maar kan later wel geen hoge prio
 
 class MyTopo( Topo ):
     "Simple topology example."
@@ -58,7 +62,7 @@ class MyTopo( Topo ):
         self.addLink( switch1, DHCP_Vlan3, port1=20, port2=1 )
         self.addLink( switch1, switch3, port1=21, port2=24 )
         self.addLink( switch1 , controller, port1=22, port2=1 )
-        self.addLink( switch1, nat1, port1=23, port2=1 )        
+        self.addLink( switch1, nat1, port1=23, port2=1 )
         self.addLink( switch1, switch2, port1=24, port2=24 )
 
         self.addLink( switch2, host2, port1=1, port2=1 )
@@ -77,6 +81,28 @@ class MyTopo( Topo ):
         self.addLink( nat1, isp, port1=2, port2=1 )
         self.addLink( nat2, isp, port1=2, port2=2 )
 
+                # Fanout-switches voor schaaltest maakt gebruik van OVSBridghe letterlijk een domme switch geen bullshit!
+        fan_office = self.addSwitch('f1', cls=OVSBridge)
+        fan_guest  = self.addSwitch('f2', cls=OVSBridge)
+        # Koppel fanouts aan de nieuwe access-poorten
+        # - s2-eth3 => native_vlan office
+        # - s5-eth3 => native_vlan guest
+        self.addLink(switch2, fan_office, port1=3)  # s2-eth3
+        self.addLink(switch5, fan_guest,  port1=3)  # s5-eth3
+
+        # Maak veel hosts achter de fanouts
+        office_count = 250
+        guest_count  = 250
+
+#        for i in range(1, office_count + 1):
+#            h = self.addHost(f'of{i}', ip='0.0.0.0')
+#            self.addLink(fan_office, h)
+
+#        for i in range(1, guest_count + 1):
+#            h = self.addHost(f'gf{i}', ip='0.0.0.0')
+#            self.addLink(fan_guest, h)
+
+
 
 
 def run():
@@ -84,27 +110,85 @@ def run():
     net = Mininet(topo=topo, controller=None, switch=OVSSwitch, autoSetMacs=True)
     net.addController('c0', controller=RemoteController, ip='127.0.0.1', port=6653)
     net.start()
+        # ---- Dynamisch de juiste interface-namen opzoeken kan later weg wnr naam duidelijk zijn was heel irritant ----
+    def intf_to_peer(node, peername):
+        "Geef de interface-naam terug die naar 'peername' gaat."
+        for intf in node.intfList():
+            link = intf.link
+            if not link:
+                continue
+            # kies de andere kant van de link
+            other = link.intf1 if link.intf1.node != node else link.intf2
+            if other.node.name == peername:
+                return intf.name
+        return None
 
     nat1_node = net.get('nat1')
     nat2_node = net.get('nat2')
-    isp_node = net.get('isp')
-    isp_node.cmd('ifconfig isp-eth2 221.1.1.2/28')
-    nat1_node.cmd('ifconfig nat1-eth2 221.1.1.3/28')
-    nat2_node.cmd('ifconfig nat2-eth2 221.1.1.4/28')
+    isp_node  = net.get('isp')
 
+    # NAT1: LAN=link naar s1, WAN=link naar isp
+    nat1_lan = intf_to_peer(nat1_node, 's1')
+    nat1_wan = intf_to_peer(nat1_node, 'isp')
+
+    # NAT2: LAN=link naar s3, WAN=link naar isp
+    nat2_lan = intf_to_peer(nat2_node, 's3')
+    nat2_wan = intf_to_peer(nat2_node, 'isp')
+
+    # ISP: interface naar nat1 en naar nat2
+    isp_to_nat1 = intf_to_peer(isp_node, 'nat1')
+    isp_to_nat2 = intf_to_peer(isp_node, 'nat2')
+
+    # Voor debug: print de namen (optioneel)
+    print('NAT1 LAN:', nat1_lan, 'WAN:', nat1_wan)
+    print('NAT2 LAN:', nat2_lan, 'WAN:', nat2_wan)
+    print('ISP -> nat1:', isp_to_nat1, 'ISP -> nat2:', isp_to_nat2)
+
+    # ---- Adressering correct zetten met 'replace' (idempotent) ----
+    # ISP: zet 221.1.1.1 op de link naar nat1 en 221.1.1.2 naar nat2
+    isp_node.cmd(f'ip addr flush dev {isp_to_nat1}; ip addr add 221.1.1.1/28 dev {isp_to_nat1}')
+    isp_node.cmd(f'ip addr flush dev {isp_to_nat2}; ip addr add 221.1.1.2/28 dev {isp_to_nat2}')
+
+    # NAT1: LAN=10.0.0.1/24, WAN=221.1.1.3/28, default via 221.1.1.1
+    nat1_node.cmd(f'ip addr replace 10.0.0.1/24 dev {nat1_lan}')
+    nat1_node.cmd(f'ip addr replace 221.1.1.3/28 dev {nat1_wan}')
+    nat1_node.cmd(f'ip route replace default via 221.1.1.1 dev {nat1_wan}')
+
+    # new
+    nat1_node.cmd(f'ip route replace 10.0.100.0/24 via 10.0.0.254 dev {nat1_lan}')
+    nat1_node.cmd(f'ip route replace 10.0.200.0/24 via 10.0.0.254 dev {nat1_lan}')
+
+    # NAT2: LAN=10.0.0.2/24, WAN=221.1.1.4/28, default via 221.1.1.2 (mag als standby)
+    nat2_node.cmd(f'ip addr replace 10.0.0.2/24 dev {nat2_lan}')
+    nat2_node.cmd(f'ip addr replace 221.1.1.4/28 dev {nat2_wan}')
+    nat2_node.cmd(f'ip route replace default via 221.1.1.2 dev {nat2_wan}')
+
+    # ---- NAT op NAT1 (idempotent) ----
+    nat1_node.cmd('sysctl -w net.ipv4.ip_forward=1')
+    nat1_node.cmd('iptables -t nat -F; iptables -F')
+    nat1_node.cmd(f'iptables -t nat -A POSTROUTING -o {nat1_wan} -j MASQUERADE')
+    nat1_node.cmd(f'iptables -A FORWARD -i {nat1_wan} -o {nat1_lan} -m state --state ESTABLISHED,RELATED -j ACCEPT')
+    nat1_node.cmd(f'iptables -A FORWARD -i {nat1_lan} -o {nat1_wan} -j ACCEPT')
+
+
+    # DHCP range
     DHCP_Vlan1 = net.get('dhcp1')
     DHCP_Vlan2 = net.get('dhcp2')
     DHCP_Vlan3 = net.get('dhcp3')
-    DHCP_Vlan1.cmd('dnsmasq --interface=dhcp1-eth1 --bind-interfaces --dhcp-range=10.0.100.11,10.0.100.200,12h --dhcp-sequential-ip --dhcp-option=3,10.0.100.254 --dhcp-option=6,8.8.8.8 --no-daemon &')
-    DHCP_Vlan2.cmd('dnsmasq --interface=dhcp2-eth1 --bind-interfaces --dhcp-range=10.0.200.11,10.0.200.200,12h --dhcp-sequential-ip --dhcp-option=3,10.0.200.254 --dhcp-option=6,8.8.8.8 --no-daemon &')
-    DHCP_Vlan3.cmd('dnsmasq --interface=dhcp3-eth1 --bind-interfaces --dhcp-range=10.0.0.11,10.0.0.200,12h --dhcp-sequential-ip --dhcp-option=3,10.0.0.254 --dhcp-option=6,8.8.8.8 --no-daemon &')
+    DHCP_Vlan1.cmd('dnsmasq --interface=dhcp1-eth1 --bind-interfaces --dhcp-range=10.0.100.11,10.0.100.250,12h --dhcp-sequential-ip --dhcp-option=3,10.0.100.254 --dhcp-option=6,8.8.8.8 --no-daemon &')
+    DHCP_Vlan2.cmd('dnsmasq --interface=dhcp2-eth1 --bind-interfaces --dhcp-range=10.0.200.11,10.0.200.250,12h --dhcp-sequential-ip --dhcp-option=3,10.0.200.254 --dhcp-option=6,8.8.8.8 --no-daemon &')
+    DHCP_Vlan3.cmd('dnsmasq --interface=dhcp3-eth1 --bind-interfaces --dhcp-range=10.0.0.11,10.0.0.250,12h --dhcp-sequential-ip --dhcp-option=3,10.0.0.254 --dhcp-option=6,8.8.8.8 --no-daemon &')
 
     time.sleep(2)  # wait a bit for DHCP servers to start
-    dhcp_client_names = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']
-    for name in dhcp_client_names:
-        host = net.get(name)
-        # use eth1 inside each Mininet host
-        host.cmd('dhclient -v %s-eth1 &' % name)
+
+    # Start dhclient PARALLEL en sla speciale nodes over
+    skip = ('dhcp', 'nat', 'isp', 'c')  # prefixes overslaan
+    for h in net.hosts:
+        name = h.name
+        if name.startswith(skip):
+            continue
+        intf = h.intfList()[0].name   # eerste interface
+        h.cmd(f'dhclient -1 {intf} &')  # -1 = stop na eerste lease; & = parallel
 
     CLI(net)
     # DHCP blijft draaien op de VM zelf dus kill the process
