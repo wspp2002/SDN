@@ -10,7 +10,7 @@ import time
 # OVSBridge voor 500 bench test
 from mininet.node import OVSBridge
 
-
+        
 # NAT 2 kan inprincipe weg, maar kan later wel geen hoge prio
 
 class MyTopo( Topo ):
@@ -24,7 +24,7 @@ class MyTopo( Topo ):
         switch1 = self.addSwitch( 's1' , dpid='0000000000000001', cls=OVSSwitch, protocols='OpenFlow13')
         controller = self.addHost( 'c1' , ip='10.0.0.3/24', defaultRoute='via 10.0.0.254' )
         # leave h1 without a static IP so it can receive one via DHCP
-        host1 = self.addHost( 'h1', ip='0.0.0.0' ) # Host op office vlan
+        host1 = self.addHost( 'h1', ip='0.0.0.0') # Host op office vlan
 
         DHCP_Vlan1 = self.addHost( 'dhcp1', ip='10.0.100.10/24', defaultRoute='via 10.0.100.254' )
         DHCP_Vlan2 = self.addHost( 'dhcp2', ip='10.0.200.10/24', defaultRoute='via 10.0.200.254' )
@@ -32,13 +32,13 @@ class MyTopo( Topo ):
 
         # verdieping 2
         switch2 = self.addSwitch( 's2' , dpid='0000000000000002', cls=OVSSwitch, protocols='OpenFlow13')
-        host2 = self.addHost( 'h2', ip='0.0.0.0'  ) # Office vlan
+        host2 = self.addHost( 'h2', ip='0.0.0.0') # Office vlan
         host3 = self.addHost( 'h3', ip='0.0.0.0' ) # Guest vlan
 
         # gebouw B
         # verdieping 1
         switch3 = self.addSwitch( 's3' , dpid='0000000000000003', cls=OVSSwitch, protocols='OpenFlow13')
-        host4 = self.addHost( 'h4', ip='0.0.0.0' ) # office vlan
+        host4 = self.addHost( 'h4', ip='0.0.0.0' ) # office vHost1 (Office vlan)lan
         c2 = self.addHost( 'c2' , ip='10.0.0.4/24', defaultRoute='via 10.0.0.254' )
 
         # verdieping 2
@@ -62,7 +62,7 @@ class MyTopo( Topo ):
         self.addLink( switch1, DHCP_Vlan3, port1=20, port2=1 )
         self.addLink( switch1, switch3, port1=21, port2=24 )
         self.addLink( switch1 , controller, port1=22, port2=1 )
-        self.addLink( switch1, nat1, port1=23, port2=1 )
+        self.addLink( switch1, nat1, port1=23, port2=1 )        
         self.addLink( switch1, switch2, port1=24, port2=24 )
 
         self.addLink( switch2, host2, port1=1, port2=1 )
@@ -81,7 +81,7 @@ class MyTopo( Topo ):
         self.addLink( nat1, isp, port1=2, port2=1 )
         self.addLink( nat2, isp, port1=2, port2=2 )
 
-                # Fanout-switches voor schaaltest maakt gebruik van OVSBridghe letterlijk een domme switch geen bullshit!
+        # Fanout-switches voor schaaltest maakt gebruik van OVSBridghe letterlijk een domme switch geen bullshit!
         fan_office = self.addSwitch('f1', cls=OVSBridge)
         fan_guest  = self.addSwitch('f2', cls=OVSBridge)
         # Koppel fanouts aan de nieuwe access-poorten
@@ -171,13 +171,53 @@ def run():
     nat1_node.cmd(f'iptables -A FORWARD -i {nat1_lan} -o {nat1_wan} -j ACCEPT')
 
 
-    # DHCP range
+    # DHCP range 
     DHCP_Vlan1 = net.get('dhcp1')
     DHCP_Vlan2 = net.get('dhcp2')
     DHCP_Vlan3 = net.get('dhcp3')
-    DHCP_Vlan1.cmd('dnsmasq --interface=dhcp1-eth1 --bind-interfaces --dhcp-range=10.0.100.11,10.0.100.250,12h --dhcp-sequential-ip --dhcp-option=3,10.0.100.254 --dhcp-option=6,8.8.8.8 --no-daemon &')
-    DHCP_Vlan2.cmd('dnsmasq --interface=dhcp2-eth1 --bind-interfaces --dhcp-range=10.0.200.11,10.0.200.250,12h --dhcp-sequential-ip --dhcp-option=3,10.0.200.254 --dhcp-option=6,8.8.8.8 --no-daemon &')
-    DHCP_Vlan3.cmd('dnsmasq --interface=dhcp3-eth1 --bind-interfaces --dhcp-range=10.0.0.11,10.0.0.250,12h --dhcp-sequential-ip --dhcp-option=3,10.0.0.254 --dhcp-option=6,8.8.8.8 --no-daemon &')
+
+    try:
+        # find first interface name for each host
+        DHCP_Vlan1_if = DHCP_Vlan1.intfList()[0].name
+        DHCP_Vlan2_if = DHCP_Vlan2.intfList()[0].name
+        DHCP_Vlan3_if = DHCP_Vlan3.intfList()[0].name
+        nat1_if = nat1_node.intfList()[0].name
+        nat2_if = nat2_node.intfList()[0].name
+        isp_if  = isp_node.intfList()[0].name
+        c1_if  = net.get('c1').intfList()[0].name
+        c2_if  = net.get('c2').intfList()[0].name
+        # flush any existing IPv6 and assign the intended addresses
+        DHCP_Vlan1.cmd(f'ip -6 addr flush dev {DHCP_Vlan1_if}; ip -6 addr add fe80::10/64 dev {DHCP_Vlan1_if} scope link; ip -6 addr add 2042:100::10/64 dev {DHCP_Vlan1_if}')
+        DHCP_Vlan2.cmd(f'ip -6 addr flush dev {DHCP_Vlan2_if}; ip -6 addr add fe80::20/64 dev {DHCP_Vlan2_if} scope link; ip -6 addr add 2042:200::10/64 dev {DHCP_Vlan2_if}')
+        DHCP_Vlan3.cmd(f'ip -6 addr flush dev {DHCP_Vlan3_if}; ip -6 addr add fe80::30/64 dev {DHCP_Vlan3_if} scope link; ip -6 addr add 2042::10/64 dev {DHCP_Vlan3_if}')
+
+        nat1_if.cmd(f'ip -6 addr flush dev {nat1_if}; ip -6 addr add 2042::1/64 dev {nat1_if}')
+        nat2_if.cmd(f'ip -6 addr flush dev {nat2_if}; ip -6 addr add 2042::2/64 dev {nat2_if}')
+        isp_if.cmd(f'ip -6 addr flush dev {isp_if}; ip -6 addr add 2043::1/64 dev {isp_if}')
+        c1_if.cmd(f'ip -6 addr flush dev {c1_if}; ip -6 addr add 2042::3/64 dev {c1_if}')
+        c2_if.cmd(f'ip -6 addr flush dev {c2_if}; ip -6 addr add 2042::4/64 dev {c2_if}')
+        # set routes for IPv6
+        DHCP_Vlan1.cmd(f'ip -6 route replace ff02::1:2/128 dev {DHCP_Vlan1_if} scope link')
+        DHCP_Vlan1.cmd(f'ip -6 route replace default via 2042:100::ffff:ffff:ffff:ffff dev {DHCP_Vlan1_if}')
+        DHCP_Vlan2.cmd(f'ip -6 route replace ff02::1:2/128 dev {DHCP_Vlan2_if} scope link')
+        DHCP_Vlan2.cmd(f'ip -6 route replace default via 2042:200::ffff:ffff:ffff:ffff dev {DHCP_Vlan2_if}')
+        DHCP_Vlan3.cmd(f'ip -6 route replace ff02::1:2/128 dev {DHCP_Vlan3_if} scope link')
+        DHCP_Vlan3.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:ffff dev {DHCP_Vlan3_if}')
+
+        nat1_if.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:ffff dev {nat1_if}')
+        nat2_if.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:ffff dev {nat2_if}')
+        isp_if.cmd(f'ip -6 route replace default via 2043::ffff:ffff:ffff:ffff dev {isp_if}')
+        c1_if.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:ffff dev {c1_if}')
+        c2_if.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:ffff dev {c2_if}')
+
+    except Exception as e:
+        print('IPv6 assignment skipped or failed:', e)
+
+
+
+    DHCP_Vlan1.cmd('dnsmasq --interface=dhcp1-eth1 --bind-interfaces --dhcp-range=10.0.100.11,10.0.100.250,12h --dhcp-range=2042:100::11,2042:100::ffff,64,12h --dhcp-option=3,10.0.100.254 --dhcp-option=6,8.8.8.8 --dhcp-option=option6:dns-server,[2606:4700:4700::1111] --enable-ra --dhcp-sequential-ip --no-daemon &')
+    DHCP_Vlan2.cmd('dnsmasq --interface=dhcp2-eth1 --bind-interfaces --dhcp-range=10.0.200.11,10.0.200.250,12h --dhcp-range=2042:200::11,2042:200::ffff,64,12h --dhcp-option=3,10.0.200.254 --dhcp-option=6,8.8.8.8 --dhcp-option=option6:dns-server,[2606:4700:4700::1111] --enable-ra --dhcp-sequential-ip --no-daemon &')
+    DHCP_Vlan3.cmd('dnsmasq --interface=dhcp3-eth1 --bind-interfaces --dhcp-range=10.0.0.11,10.0.0.250,12h --dhcp-range=2042::11,2042::ffff,64,12h --dhcp-option=3,10.0.0.254 --dhcp-option=6,8.8.8.8 --dhcp-option=option6:dns-server,[2606:4700:4700::1111] --enable-ra --dhcp-sequential-ip --no-daemon &')
 
     time.sleep(2)  # wait a bit for DHCP servers to start
 
@@ -188,7 +228,7 @@ def run():
         if name.startswith(skip):
             continue
         intf = h.intfList()[0].name   # eerste interface
-        h.cmd(f'dhclient -1 {intf} &')  # -1 = stop na eerste lease; & = parallel
+        h.cmd(f'dhclient -1 {intf} & dhclient -6 -1 {intf} &')  # -1 = stop na eerste lease; & = parallel?
 
     CLI(net)
     # DHCP blijft draaien op de VM zelf dus kill the process

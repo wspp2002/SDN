@@ -6,18 +6,20 @@ vlans:
   office:
     vid: 100
     faucet_mac: "0e:00:00:00:10:01"
-    faucet_vips: [ "10.0.100.254/24" ]
+    faucet_vips:  
+        - "10.0.100.254/24"
+        - "2042:100::ffff:ffff:ffff:ffff/64"
     routes:
       - route:
           ip_dst: "0.0.0.0/0"
           ip_gw: "10.0.0.1"
 
-
-
   guest:
     vid: 200
     faucet_mac: "0e:00:00:00:20:01"
-    faucet_vips: [ "10.0.200.254/24" ]
+    faucet_vips: 
+        - "10.0.200.254/24"
+        - "2042:200::ffff:ffff:ffff:ffff/64"
     routes:
       - route:
           ip_dst: "0.0.0.0/0"
@@ -28,7 +30,9 @@ vlans:
   management:
     vid: 300
     faucet_mac: "0e:00:00:00:30:01"
-    faucet_vips: [ "10.0.0.254/24" ]
+    faucet_vips: 
+        - "10.0.0.254/24"
+        - "2042::ffff:ffff:ffff:ffff/64"
     routes:
       - route:
           ip_dst: "0.0.0.0/0"
@@ -83,7 +87,7 @@ dps:
       23:
         name: "to s4"
         stack: { dp: s4, port: 24 }
-      24:
+      24:  
         name: "to s1"
         stack: { dp: s1, port: 21 }
 
@@ -95,7 +99,7 @@ dps:
       24:
         name: "to s3"
         stack: { dp: s3, port: 23 }
-
+  
   s5:
     dp_id: 0x5
     hardware: "Open vSwitch"
@@ -105,3 +109,4 @@ dps:
       24:
         name: "to s3"
         stack: { dp: s3, port: 22 }
+    

@@ -14,21 +14,27 @@ acls:
     - rule: { dl_src: "00:00:00:00:00:0e", actions: { allow: 1 } }
     - rule: { dl_src: "0e:00:00:00:30:01", actions: { allow: 1 } }
     - rule: { actions: { allow: 0 } }
-
+    
     guest-egress-block:
     - rule: { dl_type: 0x800, ipv4_src: 10.0.200.0/24, ipv4_dst: 10.0.0.0/24,   actions: { allow: 0 } }    # guest -> mgmt
     - rule: { dl_type: 0x800, ipv4_src: 10.0.200.0/24, ipv4_dst: 10.0.100.0/24, actions: { allow: 0 } }    # guest -> office
     - rule: { dl_type: 0x800, ipv4_src: 10.0.200.0/24, ipv4_dst: 10.0.200.0/24, actions: { allow: 1 } }    # guest -> guest
+
+    - rule: { dl_type: 0x86dd, ipv6_src: "2042:200::/64", ipv6_dst: "2042::/64", actions: { allow: 0 } }    # guest -> mgmt
+    - rule: { dl_type: 0x86dd, ipv6_src: "2042:200::/64", ipv6_dst: "2042:100::/64", actions: { allow: 0 } }  # guest -> office
+    - rule: { dl_type: 0x86dd, ipv6_src: "2042:200::/64", ipv6_dst: "2042:200::/64", actions: { allow: 1 } }  # guest -> guest
     - rule: { actions: { allow: 1 } }
 
     # Alles wat UIT office komt, mag NIET naar het guest-subnet
     office-egress-block-to-guest:
     - rule: { dl_type: 0x800, ipv4_dst: 10.0.200.0/24, actions: { allow: 0 } }
+    - rule: { dl_type: 0x86dd, ipv6_dst: "2042:200::/64", actions: { allow: 0 } }
     - rule: { actions: { allow: 1 } }
 
      # Alles wat UIT management komt, mag NIET naar het guest-subnet
     mgmt-egress-block-to-guest:
     - rule: { dl_type: 0x800, ipv4_dst: 10.0.200.0/24, actions: { allow: 0 } }
+    - rule: { dl_type: 0x86dd, ipv6_dst: "2042:200::/64", actions: { allow: 0 } }
     - rule: { actions: { allow: 1 } }
 
     access-port-protect:
