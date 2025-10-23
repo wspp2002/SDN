@@ -126,6 +126,8 @@ def run():
     nat1_node = net.get('nat1')
     nat2_node = net.get('nat2')
     isp_node  = net.get('isp')
+    c1_node  = net.get('c1')
+    c2_node  = net.get('c2')
 
     # NAT1: LAN=link naar s1, WAN=link naar isp
     nat1_lan = intf_to_peer(nat1_node, 's1')
@@ -176,44 +178,44 @@ def run():
     DHCP_Vlan2 = net.get('dhcp2')
     DHCP_Vlan3 = net.get('dhcp3')
 
-    try:
-        # find first interface name for each host
-        DHCP_Vlan1_if = DHCP_Vlan1.intfList()[0].name
-        DHCP_Vlan2_if = DHCP_Vlan2.intfList()[0].name
-        DHCP_Vlan3_if = DHCP_Vlan3.intfList()[0].name
-        nat1_if = nat1_node.intfList()[0].name
-        nat2_if = nat2_node.intfList()[0].name
-        isp_if  = isp_node.intfList()[0].name
-        c1_if  = net.get('c1').intfList()[0].name
-        c2_if  = net.get('c2').intfList()[0].name
-        # flush any existing IPv6 and assign the intended addresses
-        DHCP_Vlan1.cmd(f'ip -6 addr flush dev {DHCP_Vlan1_if}; ip -6 addr add fe80::10/64 dev {DHCP_Vlan1_if} scope link; ip -6 addr add 2042:100::10/64 dev {DHCP_Vlan1_if}')
-        DHCP_Vlan2.cmd(f'ip -6 addr flush dev {DHCP_Vlan2_if}; ip -6 addr add fe80::20/64 dev {DHCP_Vlan2_if} scope link; ip -6 addr add 2042:200::10/64 dev {DHCP_Vlan2_if}')
-        DHCP_Vlan3.cmd(f'ip -6 addr flush dev {DHCP_Vlan3_if}; ip -6 addr add fe80::30/64 dev {DHCP_Vlan3_if} scope link; ip -6 addr add 2042::10/64 dev {DHCP_Vlan3_if}')
+    # configue IPv6 addresses
 
-        nat1_if.cmd(f'ip -6 addr flush dev {nat1_if}; ip -6 addr add 2042::1/64 dev {nat1_if}')
-        nat2_if.cmd(f'ip -6 addr flush dev {nat2_if}; ip -6 addr add 2042::2/64 dev {nat2_if}')
-        isp_if.cmd(f'ip -6 addr flush dev {isp_if}; ip -6 addr add 2043::1/64 dev {isp_if}')
-        c1_if.cmd(f'ip -6 addr flush dev {c1_if}; ip -6 addr add 2042::3/64 dev {c1_if}')
-        c2_if.cmd(f'ip -6 addr flush dev {c2_if}; ip -6 addr add 2042::4/64 dev {c2_if}')
-        # set routes for IPv6
-        DHCP_Vlan1.cmd(f'ip -6 route replace ff02::1:2/128 dev {DHCP_Vlan1_if} scope link')
-        DHCP_Vlan1.cmd(f'ip -6 route replace default via 2042:100::ffff:ffff:ffff:ffff dev {DHCP_Vlan1_if}')
-        DHCP_Vlan2.cmd(f'ip -6 route replace ff02::1:2/128 dev {DHCP_Vlan2_if} scope link')
-        DHCP_Vlan2.cmd(f'ip -6 route replace default via 2042:200::ffff:ffff:ffff:ffff dev {DHCP_Vlan2_if}')
-        DHCP_Vlan3.cmd(f'ip -6 route replace ff02::1:2/128 dev {DHCP_Vlan3_if} scope link')
-        DHCP_Vlan3.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:ffff dev {DHCP_Vlan3_if}')
+    # find first interface name for each host
+    DHCP_Vlan1_if = DHCP_Vlan1.intfList()[0].name
+    DHCP_Vlan2_if = DHCP_Vlan2.intfList()[0].name
+    DHCP_Vlan3_if = DHCP_Vlan3.intfList()[0].name
 
-        nat1_if.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:ffff dev {nat1_if}')
-        nat2_if.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:ffff dev {nat2_if}')
-        isp_if.cmd(f'ip -6 route replace default via 2043::ffff:ffff:ffff:ffff dev {isp_if}')
-        c1_if.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:ffff dev {c1_if}')
-        c2_if.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:ffff dev {c2_if}')
+    c1_if  = net.get('c1').intfList()[0].name
+    c2_if  = net.get('c2').intfList()[0].name
+    # flush any existing IPv6 and assign the intended addresses
+    DHCP_Vlan1.cmd(f'ip -6 addr flush dev {DHCP_Vlan1_if}; ip -6 addr add fe80::10/64 dev {DHCP_Vlan1_if} scope link; ip -6 addr add 2042:100::10/64 dev {DHCP_Vlan1_if}')
+    DHCP_Vlan2.cmd(f'ip -6 addr flush dev {DHCP_Vlan2_if}; ip -6 addr add fe80::20/64 dev {DHCP_Vlan2_if} scope link; ip -6 addr add 2042:200::10/64 dev {DHCP_Vlan2_if}')
+    DHCP_Vlan3.cmd(f'ip -6 addr flush dev {DHCP_Vlan3_if}; ip -6 addr add fe80::30/64 dev {DHCP_Vlan3_if} scope link; ip -6 addr add 2042::10/64 dev {DHCP_Vlan3_if}')
 
-    except Exception as e:
-        print('IPv6 assignment skipped or failed:', e)
+    nat1_node.cmd(f'ip -6 addr flush dev {nat1_lan}; ip -6 addr add 2042::1/64 dev {nat1_lan}')
+    nat1_node.cmd(f'ip -6 addr flush dev {nat1_wan}; ip -6 addr add 2043::3/64 dev {nat1_wan}')
+    nat2_node.cmd(f'ip -6 addr flush dev {nat2_lan}; ip -6 addr add 2042::2/64 dev {nat2_lan}')
+    nat2_node.cmd(f'ip -6 addr flush dev {nat2_wan}; ip -6 addr add 2043::4/64 dev {nat2_wan}')
+    isp_node.cmd(f'ip -6 addr flush dev {isp_to_nat1}; ip -6 addr add 2043::1/64 dev {isp_to_nat1}')
+    isp_node.cmd(f'ip -6 addr flush dev {isp_to_nat2}; ip -6 addr add 2043::2/64 dev {isp_to_nat2}')
+    c1_node.cmd(f'ip -6 addr flush dev {c1_if}; ip -6 addr add 2042::3/64 dev {c1_if}')
+    c2_node.cmd(f'ip -6 addr flush dev {c2_if}; ip -6 addr add 2042::4/64 dev {c2_if}')
+    # set routes for IPv6
+    DHCP_Vlan1.cmd(f'ip -6 route replace ff02::1:2/128 dev {DHCP_Vlan1_if} scope link')
+    DHCP_Vlan1.cmd(f'ip -6 route replace default via 2042:100::ffff:ffff:ffff:fffe dev {DHCP_Vlan1_if}')
+    DHCP_Vlan2.cmd(f'ip -6 route replace ff02::1:2/128 dev {DHCP_Vlan2_if} scope link')
+    DHCP_Vlan2.cmd(f'ip -6 route replace default via 2042:200::ffff:ffff:ffff:fffe dev {DHCP_Vlan2_if}')
+    DHCP_Vlan3.cmd(f'ip -6 route replace ff02::1:2/128 dev {DHCP_Vlan3_if} scope link')
+    DHCP_Vlan3.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:fffe dev {DHCP_Vlan3_if}')
 
-
+    nat1_node.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:fffe dev {nat1_lan}')
+    nat2_node.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:fffe dev {nat2_lan}')
+    isp_node.cmd(f'ip -6 route replace default via 2043::3 dev {isp_to_nat1}')
+    c1_node.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:fffe dev {c1_if}')
+    c2_node.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:fffe dev {c2_if}')
+    # enable IPv6 forwarding on NAT nodes
+    nat1_node.cmd('sudo sysctl -w net.ipv6.conf.default.forwarding=1')
+    nat2_node.cmd('sudo sysctl -w net.ipv6.conf.default.forwarding=1')
 
     DHCP_Vlan1.cmd('dnsmasq --interface=dhcp1-eth1 --bind-interfaces --dhcp-range=10.0.100.11,10.0.100.250,12h --dhcp-range=2042:100::11,2042:100::ffff,64,12h --dhcp-option=3,10.0.100.254 --dhcp-option=6,8.8.8.8 --dhcp-option=option6:dns-server,[2606:4700:4700::1111] --enable-ra --dhcp-sequential-ip --no-daemon &')
     DHCP_Vlan2.cmd('dnsmasq --interface=dhcp2-eth1 --bind-interfaces --dhcp-range=10.0.200.11,10.0.200.250,12h --dhcp-range=2042:200::11,2042:200::ffff,64,12h --dhcp-option=3,10.0.200.254 --dhcp-option=6,8.8.8.8 --dhcp-option=option6:dns-server,[2606:4700:4700::1111] --enable-ra --dhcp-sequential-ip --no-daemon &')

@@ -13,6 +13,9 @@ vlans:
       - route:
           ip_dst: "0.0.0.0/0"
           ip_gw: "10.0.0.1"
+      - route:
+          ip_dst: "::/0"
+          ip_gw: "2042::1"
 
   guest:
     vid: 200
@@ -24,7 +27,9 @@ vlans:
       - route:
           ip_dst: "0.0.0.0/0"
           ip_gw: "10.0.0.1"
-
+      - route:
+          ip_dst: "::/0"
+          ip_gw: "2042::1"
     acls_in: [ rate-limit-guest ]  # rate-limit voor guest-vlan
 
   management:
@@ -37,11 +42,13 @@ vlans:
       - route:
           ip_dst: "0.0.0.0/0"
           ip_gw: "10.0.0.1"
-
+      - route:
+          ip_dst: "::/0"
+          ip_gw: "2042::1"
 
 routers:
   rtr:
-    vlans: [office, guest, management]
+    vlans: [office, guest, management]  
 
 dps:
   s1:
@@ -57,7 +64,7 @@ dps:
         name: "to s3"
         stack: { dp: s3, port: 24 }   # <-- ÉCHTE stack-link (geen tagged_vlans hier)
       22:  { name: "c1", native_vlan: management, acls_in: [mgmt-port-security, mgmt-egress-block-to-guest]}
-      23:  { name: "nat1", native_vlan: management, acls_in: [mgmt-port-security]}
+      23:  { name: "nat1", native_vlan: management, acls_in: [mgmt-port-security, firewall]}
       24:
         name: "to s2"
         stack: { dp: s2, port: 24 }   # <-- ÉCHTE stack-link (geen tagged_vlans hier)
@@ -80,7 +87,7 @@ dps:
     interfaces:
       1:   { name: "h4", native_vlan: office, acls_in: [office-egress-block-to-guest]}
       2:   { name: "c2", native_vlan: management, acls_in: [mgmt-egress-block-to-guest, mgmt-port-security]}
-      21:  { name: "nat2", native_vlan: management, acls_in: [mgmt-port-security]}
+      21:  { name: "nat2", native_vlan: management, acls_in: [mgmt-port-security, firewall]}
       22:
         name: "to s5"
         stack: { dp: s5, port: 24 }

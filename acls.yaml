@@ -111,6 +111,19 @@ acls:
               actions:
                   allow: 1        # allow
 
+    firewall:
+        - rule: { dl_type: 0x800, ipv4_src: 10.0.0.0/24, actions: { allow: 1 } }
+        - rule: { dl_type: 0x800, ipv4_src: 10.0.100.0/24, actions: { allow: 1 } }
+        - rule: { dl_type: 0x800, ipv4_src: 10.0.200.0/24, actions: { allow: 1 } }
+        - rule: { dl_type: 0x86dd, ipv6_src: "2042::/64", actions: { allow: 1 } }
+        - rule: { dl_type: 0x86dd, ipv6_src: "2042:100::/64", actions: { allow: 1 } }
+        - rule: { dl_type: 0x86dd, ipv6_src: "2042:200::/64", actions: { allow: 1 } }
+
+        - rule: { dl_type: 0x800, ct_state: 0x22/0x22, actions: { allow: 1 } }
+        - rule: { dl_type: 0x86dd, ct_state: 0x22/0x22, actions: { allow: 1 } }
+        - rule: { actions: { allow: 0 } }
+
+
 meters:
     "guest":
         meter_id: 1
