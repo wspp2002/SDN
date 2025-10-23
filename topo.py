@@ -214,7 +214,9 @@ def run():
     c1_node.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:fffe dev {c1_if}')
     c2_node.cmd(f'ip -6 route replace default via 2042::ffff:ffff:ffff:fffe dev {c2_if}')
     # enable IPv6 forwarding on NAT nodes
+    nat1_node.cmd('sudo sysctl -w net.ipv6.conf.all.forwarding=1')
     nat1_node.cmd('sudo sysctl -w net.ipv6.conf.default.forwarding=1')
+    nat2_node.cmd('sudo sysctl -w net.ipv6.conf.all.forwarding=1')
     nat2_node.cmd('sudo sysctl -w net.ipv6.conf.default.forwarding=1')
 
     DHCP_Vlan1.cmd('dnsmasq --interface=dhcp1-eth1 --bind-interfaces --dhcp-range=10.0.100.11,10.0.100.250,12h --dhcp-range=2042:100::11,2042:100::ffff,64,12h --dhcp-option=3,10.0.100.254 --dhcp-option=6,8.8.8.8 --dhcp-option=option6:dns-server,[2606:4700:4700::1111] --enable-ra --dhcp-sequential-ip --no-daemon &')
